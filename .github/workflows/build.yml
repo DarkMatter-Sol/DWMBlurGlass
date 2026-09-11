@@ -2,27 +2,47 @@ name: Build DWMBlurGlass
 
 on:
   workflow_dispatch:
+  push:
+    branches: [master]
+    paths-ignore: ["**.md"]
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
-      - name: Checkout with submodules
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
 
-      - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -A x64
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
 
-      - name: Build
-        run: cmake --build build --config Release
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
 
-      - name: Upload artifact
+      - name: Restore NuGet packages
+        run: nuget restore DWMBlurGlass.sln -NonInteractive
+
+      - name: Build Release x64
+        run: >
+          msbuild DWMBlurGlass.sln
+          /m
+          /p:Configuration=Release
+          /p:Platform=x64
+          /p:RestorePackages=false
+          /p:PreferredToolArchitecture=x64
+
+      - name: List output (debug helper)
+        run: Get-ChildItem -Recurse Build | Select-Object FullName
+        shell: pwsh
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: DWMBlurGlass
+          name: DWMBlurGlass-x64-Release
           path: |
-            build/**/Release/*.exe
-            build/**/Release/*.dll
+            Build/x64/Release/**
+            Languagefiles/**
+          if-no-files-found: error
