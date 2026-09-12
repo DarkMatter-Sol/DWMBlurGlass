@@ -1,6 +1,6 @@
 name: Build DWMBlurGlass
 
-"on":
+on:
   workflow_dispatch:
   push:
     branches: [master]
@@ -13,16 +13,14 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
-      - name: Checkout
+      - name: Checkout DWMBlurGlass
+        uses: actions/checkout@v4
+
+      - name: Checkout MiaoUILite
         uses: actions/checkout@v4
         with:
-          submodules: recursive
-
-      - name: Force submodule sync
-        shell: pwsh
-        run: |
-          git submodule sync --recursive
-          git submodule update --init --recursive --force
+          repository: Maplespe/MiaoUILite
+          path: deps/MiaoUILite
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
@@ -30,36 +28,39 @@ jobs:
       - name: Setup NuGet
         uses: NuGet/setup-nuget@v2
 
-      - name: Report what we have (debug helper)
-        shell: pwsh
-        run: |
-          Write-Host "=== git submodule status ==="
-          git submodule status
-          Write-Host "=== Root directories ==="
-          Get-ChildItem -Directory | Select-Object Name
-          Write-Host "=== All CMakeLists.txt locations ==="
-          Get-ChildItem -Recurse -Filter CMakeLists.txt -ErrorAction SilentlyContinue | Select-Object FullName
-          Write-Host "=== All .sln locations ==="
-          Get-ChildItem -Recurse -Filter *.sln -ErrorAction SilentlyContinue | Select-Object FullName
-          Write-Host "=== Mui.h search ==="
-          Get-ChildItem -Recurse -Filter Mui.h -ErrorAction SilentlyContinue | Select-Object FullName
-
       - name: Restore NuGet packages
         run: nuget restore DWMBlurGlass.sln -NonInteractive
 
-      - name: Build Release x64
+      - name: Build MiaoUILite (Release x64)
+        run: >
+          msbuild deps\MiaoUILite\MiaoUILite.sln
+          /m
+          /t:MiaoUI
+          /p:Configuration=Release
+          /p:Platform=x64
+          /p:PreferredToolArchitecture=x64
+
+      - name: Verify Mui.h exists
+        shell: pwsh
+        run: |
+          $mui = "deps\MiaoUILite\MiaoUI\src\include\Mui.h"
+          if (-not (Test-Path $mui)) { throw "Mui.h not found at $mui" }
+          Get-ChildItem "deps\MiaoUILite\MiaoUI\library" -ErrorAction SilentlyContinue
+
+      - name: Build DWMBlurGlass Release x64
         run: >
           msbuild DWMBlurGlass.sln
           /m
           /p:Configuration=Release
           /p:Platform=x64
           /p:PreferredToolArchitecture=x64
+          /p:MUI_LITE_LIBRARY="${{ github.workspace }}\deps\MiaoUILite\MiaoUI"
+          /p:AdditionalOptions="/utf-8"
 
-      - name: List output (debug helper)
+      - name: List output
         shell: pwsh
         run: |
-          Get-ChildItem -Recurse -Include *.dll,*.exe,*.sys -Path . |
-            Where-Object { $_.FullName -notmatch 'packages|\.git' } |
+          Get-ChildItem -Recurse -Include *.dll,*.exe -Path Build |
             Select-Object FullName
 
       - name: Upload artifacts
