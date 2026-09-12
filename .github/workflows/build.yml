@@ -33,19 +33,11 @@ jobs:
 
       - name: Build MiaoUILite (Release x64)
         run: >
-          msbuild deps\MiaoUILite\MiaoUILite.sln
+          msbuild deps\MiaoUILite\MiaoUI\MiaoUI.vcxproj
           /m
-          /t:MiaoUI
           /p:Configuration=Release
           /p:Platform=x64
           /p:PreferredToolArchitecture=x64
-
-      - name: Verify Mui.h exists
-        shell: pwsh
-        run: |
-          $mui = "deps\MiaoUILite\MiaoUI\src\include\Mui.h"
-          if (-not (Test-Path $mui)) { throw "Mui.h not found at $mui" }
-          Get-ChildItem "deps\MiaoUILite\MiaoUI\library" -ErrorAction SilentlyContinue
 
       - name: Build DWMBlurGlass Release x64
         run: >
@@ -56,12 +48,6 @@ jobs:
           /p:PreferredToolArchitecture=x64
           /p:MUI_LITE_LIBRARY="${{ github.workspace }}\deps\MiaoUILite\MiaoUI"
           /p:AdditionalOptions="/utf-8"
-
-      - name: List output
-        shell: pwsh
-        run: |
-          Get-ChildItem -Recurse -Include *.dll,*.exe -Path Build |
-            Select-Object FullName
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
