@@ -24,6 +24,12 @@ jobs:
           git submodule sync --recursive
           git submodule update --init --recursive --force
 
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
       - name: Report what we have (debug helper)
         shell: pwsh
         run: |
@@ -38,33 +44,16 @@ jobs:
           Write-Host "=== Mui.h search ==="
           Get-ChildItem -Recurse -Filter Mui.h -ErrorAction SilentlyContinue | Select-Object FullName
 
-      - name: Configure and Build (auto-detect)
-        shell: pwsh
-        run: |
-          $cmakeLists = Get-ChildItem -Recurse -Filter CMakeLists.txt -ErrorAction SilentlyContinue |
-            Where-Object { $_.FullName -notmatch '\\tools\\|\\examples\\|\.git' } |
-            Select-Object -First 1
+      - name: Restore NuGet packages
+        run: nuget restore DWMBlurGlass.sln -NonInteractive
 
-          if ($cmakeLists) {
-            $srcDir = $cmakeLists.DirectoryName
-            Write-Host "Found CMakeLists.txt at: $srcDir"
-            Write-Host "=== Configuring with CMake ==="
-            cmake -B Build -S $srcDir -G "Visual Studio 17 2022" -A x64
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            Write-Host "=== Building with CMake ==="
-            cmake --build Build --config Release --parallel
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-          else {
-            $sln = Get-ChildItem -Recurse -Filter *.sln | Select-Object -First 1
-            if (-not $sln) { Write-Error "No CMakeLists.txt and no .sln found anywhere" }
-            Write-Host "Found solution at: $($sln.FullName)"
-            Write-Host "=== Restoring NuGet packages ==="
-            nuget restore $sln.FullName -NonInteractive
-            Write-Host "=== Building with MSBuild ==="
-            msbuild $sln.FullName /m /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
+      - name: Build Release x64
+        run: >
+          msbuild DWMBlurGlass.sln
+          /m
+          /p:Configuration=Release
+          /p:Platform=x64
+          /p:PreferredToolArchitecture=x64
 
       - name: List output (debug helper)
         shell: pwsh
