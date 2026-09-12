@@ -32,12 +32,14 @@ jobs:
         run: nuget restore DWMBlurGlass.sln -NonInteractive
 
       - name: Build MiaoUILite (Release x64)
+        working-directory: deps/MiaoUILite
         run: >
-          msbuild deps\MiaoUILite\MiaoUI\MiaoUI.vcxproj
+          msbuild MiaoUI\MiaoUI.vcxproj
           /m
           /p:Configuration=Release
           /p:Platform=x64
           /p:PreferredToolArchitecture=x64
+          /p:SolutionDir="${{ github.workspace }}\deps\MiaoUILite\"
 
       - name: Build DWMBlurGlass Release x64
         run: >
