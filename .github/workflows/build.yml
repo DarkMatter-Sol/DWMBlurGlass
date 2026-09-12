@@ -1,10 +1,11 @@
 name: Build DWMBlurGlass
 
-on:
+"on":
   workflow_dispatch:
   push:
     branches: [master]
-    paths-ignore: ["**.md"]
+    paths-ignore:
+      - "**.md"
 
 permissions:
   contents: read
@@ -16,41 +17,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: recursive # Automatically pulls down any missing internal header dependencies
+          submodules: recursive
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
+      - name: Configure
+        run: cmake -B Build -G "Visual Studio 17 2022" -A x64
+        shell: pwsh
 
-      - name: Setup NuGet
-        uses: NuGet/setup-nuget@v2
+      - name: Build
+        run: cmake --build Build --config Release --parallel
+        shell: pwsh
 
-      - name: Integrate vcpkg Dependencies
+      - name: List build output (debug helper)
+        shell: pwsh
         run: |
-          vcpkg integrate install
-        shell: pwsh
-
-      - name: Restore NuGet packages
-        run: nuget restore DWMBlurGlass.sln -NonInteractive
-
-      - name: Build Release x64
-        run: >
-          msbuild DWMBlurGlass.sln
-          /m
-          /p:Configuration=Release
-          /p:Platform=x64
-          /p:RestorePackages=false
-          /p:PreferredToolArchitecture=x64
-          /p:AdditionalOptions="/utf-8"
-
-      - name: List output (debug helper)
-        run: Get-ChildItem -Recurse Build | Select-Object FullName
-        shell: pwsh
+          Get-ChildItem -Recurse -Path Build -Include *.dll,*.exe,*.sys |
+            Select-Object FullName
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: DWMBlurGlass-x64-Release
           path: |
-            Build/x64/Release/**
+            Build/Release/**
             Languagefiles/**
           if-no-files-found: error
