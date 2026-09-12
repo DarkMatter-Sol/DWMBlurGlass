@@ -33,6 +33,7 @@ jobs:
           /p:Platform=x64
           /p:RestorePackages=false
           /p:PreferredToolArchitecture=x64
+          /p:AdditionalOptions="/utf-8"
 
       - name: List output (debug helper)
         run: Get-ChildItem -Recurse Build | Select-Object FullName
